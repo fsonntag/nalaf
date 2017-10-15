@@ -57,10 +57,19 @@ class SentenceDistanceEdgeGenerator(EdgeGenerator):
 
 
     def generate(self, dataset):
+        import numpy
+
+        wmin = 999
+        wmax = 0
+
+        totalcount = 0
+
+        counts = numpy.array([0] * 104)
 
         for part in dataset.parts():
             if self.rewrite_edges:
                 part.edges = []
+            part.percolate_tokens_to_entities()
 
             e1_seq = (e for e in self.part_entities(part) if e.class_id == self.entity1_class)
             e2_seq = (e for e in self.part_entities(part) if e.class_id == self.entity2_class)
@@ -79,8 +88,36 @@ class SentenceDistanceEdgeGenerator(EdgeGenerator):
                 assert pair_distance >= 0  # Because they must be sorted
 
                 if pair_distance == self.distance or self.distance is None:
-                    edge = Edge(self.relation_type, e_1, e_2, part, part, s1_index, s2_index)
-                    part.edges.append(edge)
+                    # e_2_index = e_2.tokens[0].features['id']
+                    # e_1_index = e_1.tokens[-1].features['id']
+
+                    e_2_index_alt = part.get_token_index_within_sentence_for_entity(e_2.sentence, e_2)
+                    # assert(e_2_index == e_2_index_alt)
+                    e_1_index_alt = part.get_token_index_within_sentence_for_entity(e_2.sentence, e_1) + (len(e_1.tokens) - 1)
+                    # assert(e_1_index == e_1_index_alt)
+
+                    num_words_distance = e_2_index_alt - e_1_index_alt
+                    assert(num_words_distance >= 1)
+
+                    totalcount += 1
+
+                    threshold_index = num_words_distance - 1
+
+                    counts[threshold_index:] += 1
+
+                    # if (num_words_distance in {104, 1}):
+                    #     print(num_words_distance, e_1.sentence, e_1.text, e_2.text)
+
+                    if (num_words_distance < wmin):
+                        wmin = num_words_distance
+                    if (num_words_distance > wmax):
+                        wmax = num_words_distance
+
+                    if num_words_distance <= (6 * 10) + 1:
+                        edge = Edge(self.relation_type, e_1, e_2, part, part, s1_index, s2_index)
+                        part.edges.append(edge)
+
+        print("***", wmin, wmax)
 
 
 class CombinatorEdgeGenerator(EdgeGenerator):
