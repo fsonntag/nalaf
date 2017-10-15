@@ -79,19 +79,30 @@ class SklSVM(RelationExtractor):
 
             # Compute PR rates (& AUC)
             y_pred_score = self.model.decision_function(X)
-            precision, recall, _ = precision_recall_curve(y, y_pred_score)
+            precision, recall, thresholds = precision_recall_curve(y, y_pred_score)
+
+            #print(precision, recall)
+            print("-----")
+            #print(thresholds)
             pr_auc = average_precision_score(y, y_pred_score)
             self.pr_rates.append((precision, recall, pr_auc))
 
-            proba = self.model.predict_proba(X)
+            # proba = self.model.predict_proba(X)
+            decision = self.model.intercept_[0]
+            (mymin, mymax) = (np.min(y_pred_score), np.max(y_pred_score))
+            print(mymin, mymax)
+            distance = abs(mymin) + abs(mymax)
+            mythreshold = mymin + (distance / 10) * 10
+            print(distance, mythreshold)
+
 
             # Pure classification prediction
             y_pred = self.model.predict(X)
             # same as == self.model.score(X, y))
             print_debug("Mean accuracy: {}".format(sum(real == pred for real, pred in zip(y, y_pred)) / len(y)))
 
-            for edge, (neg_prob, pos_prob) in zip(corpus.edges(), proba):
-                target_pred = -1 if (neg_prob < 0.0) else +1
+            for edge, score in zip(corpus.edges(), y_pred_score):
+                target_pred = -1 if (score < mythreshold) else +1
 
                 edge.pred_target = target_pred
 

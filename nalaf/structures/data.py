@@ -951,6 +951,13 @@ class Part:
             return return_array
 
 
+    def get_token_index_within_sentence_for_entity(self, sentence, entity):
+        for index, token in enumerate(sentence):
+            if token.start <= entity.offset < token.end:
+                return index
+        assert False, "should not happen"
+
+
     def get_sentence_index_for_annotation(self, entity):
 
         for sentence_index, sentence in enumerate(self.sentences):
