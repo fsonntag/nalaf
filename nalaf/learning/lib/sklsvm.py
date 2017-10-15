@@ -46,7 +46,7 @@ class SklSVM(RelationExtractor):
         else:
             self.preprocess = make_pipeline(None)
 
-        self.model = svm.SVC(**svc_parameters)
+        self.model = svm.SVC(probability=True, **svc_parameters)
 
         "Mutable list of precision-recall (PR) rates and corresponding AUCs that are computed on every call on `annotate`"
         self.pr_rates = []
@@ -83,11 +83,16 @@ class SklSVM(RelationExtractor):
             pr_auc = average_precision_score(y, y_pred_score)
             self.pr_rates.append((precision, recall, pr_auc))
 
+            proba = self.model.predict_proba(X)
+
             # Pure classification prediction
             y_pred = self.model.predict(X)
-            print_debug("Mean accuracy: {}".format(sum(real == pred for real, pred in zip(y, y_pred)) / len(y)))  # same as == self.model.score(X, y))
+            # same as == self.model.score(X, y))
+            print_debug("Mean accuracy: {}".format(sum(real == pred for real, pred in zip(y, y_pred)) / len(y)))
 
-            for edge, target_pred in zip(corpus.edges(), y_pred):
+            for edge, (neg_prob, pos_prob) in zip(corpus.edges(), proba):
+                target_pred = -1 if (neg_prob < 0.0) else +1
+
                 edge.pred_target = target_pred
 
             return corpus.form_predicted_relations()
